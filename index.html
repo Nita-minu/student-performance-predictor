@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Academic Student Performance &amp; At-Risk Predictor</title>
+  <style>
+    :root {
+      --navy: #172554;
+      --blue: #2563eb;
+      --light: #f1f5f9;
+      --border: #dbe3ee;
+      --text: #1e293b;
+      --muted: #64748b;
+      --red: #dc2626;
+      --amber: #d97706;
+      --green: #15803d;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 32px 16px;
+      background: var(--light);
+      color: var(--text);
+      font-family: Arial, sans-serif;
+    }
+
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    h1 { margin: 0 0 8px; color: var(--navy); }
+    h2 { margin-top: 0; font-size: 1.1rem; }
+    .subtitle { color: var(--muted); margin: 0 0 24px; }
+
+    .panel, .stat {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 8px #0f172a0a;
+    }
+
+    .upload-row, .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+    }
+
+    input[type="file"], input[type="search"] {
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: white;
+    }
+
+    input[type="search"] { min-width: 220px; }
+
+    button {
+      border: 0;
+      border-radius: 8px;
+      padding: 10px 14px;
+      background: var(--blue);
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    button:hover { filter: brightness(.93); }
+    button.secondary { background: #475569; }
+
+    .hint, .message { color: var(--muted); font-size: .92rem; }
+    .message { margin: 12px 0 0; }
+    .error { color: var(--red); }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(130px, 1fr));
+      gap: 14px;
+      margin: 18px 0;
+    }
+
+    .stat-label { color: var(--muted); font-size: .9rem; }
+    .stat-value { font-size: 1.7rem; font-weight: 700; margin-top: 6px; }
+    .high { color: var(--red); }
+    .medium { color: var(--amber); }
+    .low { color: var(--green); }
+
+    .toolbar { justify-content: space-between; margin-bottom: 14px; }
+
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; background: white; }
+    th, td {
+      text-align: left;
+      padding: 12px 10px;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    th { background: #f8fafc; color: #334155; }
+    tr:hover td { background: #f8fafc; }
+
+    .badge {
+      display: inline-block;
+      border-radius: 999px;
+      padding: 4px 9px;
+      font-size: .8rem;
+      font-weight: 700;
+    }
+    .badge.high { background: #fee2e2; }
+    .badge.medium { background: #fef3c7; }
+    .badge.low { background: #dcfce7; }
+
+    .alert {
+      margin-top: 16px;
+      padding: 13px 15px;
+      border-radius: 8px;
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+    }
+
+    @media (max-width: 700px) {
+      body { padding: 20px 10px; }
+      .stats { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Academic Student Performance Predictor</h1>
+    <p class="subtitle">Review student performance and identify students who may need support.</p>
+
+    <section class="panel">
+      <h2>Load student data</h2>
+      <div class="upload-row">
+        <input id="csvFile" type="file" accept=".csv,text/csv">
+        <button id="sampleButton" type="button" class="secondary">Load sample data</button>
+      </div>
+      <p class="hint">
+        CSV columns: id, name, attendance, assessment, studyHours
+      </p>
+      <p id="message" class="message" aria-live="polite"></p>
+    </section>
+
+    <section class="stats" aria-label="Risk summary">
+      <div class="stat">
+        <div class="stat-label">Students</div>
+        <div id="totalCount" class="stat-value">0</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">High risk</div>
+        <div id="highCount" class="stat-value high">0</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Medium risk</div>
+        <div id="mediumCount" class="stat-value medium">0</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Low risk</div>
+        <div id="lowCount" class="stat-value low">0</div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="toolbar">
+        <h2 style="margin:0">Student performance report</h2>
+        <div class="upload-row">
+          <input id="searchBox" type="search" placeholder="Search by ID or name">
+          <button id="downloadButton" type="button">Download report CSV</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Name</th>
+              <th>Attendance</th>
+              <th>Assessment</th>
+              <th>Study hours/week</th>
+              <th>Risk score</th>
+              <th>Risk level</th>
+            </tr>
+          </thead>
+          <tbody id="studentRows">
+            <tr><td colspan="7">Load a CSV file or sample data to begin.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div id="riskAlert" class="alert">No student data loaded.</div>
+    </section>
+  </main>
+
+  <script>
+    // Assumed scoring weights from the abstract:
+    // 40% attendance deficit, 40% assessment deficit,
+    // and 20% study-hours deficit relative to 10 hours/week.
+    const STUDY_HOURS_TARGET = 10;
+    const MEDIUM_RISK_LIMIT = 40;
+    const HIGH_RISK_LIMIT = 70;
+
+    let students = [];
+
+    function calculateRisk(attendance, assessment, studyHours) {
+      const attendanceRisk = 100 - attendance;
+      const assessmentRisk = 100 - assessment;
+      const studyRisk = Math.max(
+        0,
+        ((STUDY_HOURS_TARGET - studyHours) / STUDY_HOURS_TARGET) * 100
+      );
+
+      const score =
+        0.40 * attendanceRisk +
+        0.40 * assessmentRisk +
+        0.20 * studyRisk;
+
+      return Math.max(0, Math.min(100, score));
+    }
+
+    function riskLevel(score) {
+      if (score >= HIGH_RISK_LIMIT) return "HIGH";
+      if (score >= MEDIUM_RISK_LIMIT) return "MEDIUM";
+      return "LOW";
+    }
+
+    // Splits one CSV row and supports quoted values containing commas.
+    function parseCsvLine(line) {
+      const fields = [];
+      let current = "";
+      let inQuotes = false;
+
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+
+        if (char === '"') {
+          if (inQuotes && line[i + 1] === '"') {
+            current += '"';
+            i++;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (char === "," && !inQuotes) {
+          fields.push(current.trim());
+          current = "";
+        } else {
+          current += char;
+        }
+      }
+
+      if (inQuotes) throw new Error("A CSV row has an unclosed quote.");
+      fields.push(current.trim());
+      return fields;
+    }
+
+    function parseCsv(text) {
+      const lines = text.replace(/^\uFEFF/, "")
+        .split(/\r?\n/)
+        .filter(line => line.trim() !== "");
+
+      if (lines.length < 2) {
+        throw new Error("The CSV must include a header and at least one student.");
+      }
+
+      const headers = parseCsvLine(lines[0]).map(h => h.toLowerCase());
+      const required = ["id", "name", "attendance", "assessment", "studyhours"];
+      const indexes = {};
+
+      required.forEach(column => {
+        indexes[column] = headers.indexOf(column);
+        if (indexes[column] === -1) {
+          throw new Error("Missing required CSV column: " + column);
+        }
+      });
+
+      return lines.slice(1).map((line, rowIndex) => {
+        const fields = parseCsvLine(line);
+        const get = column => (fields[indexes[column]] || "").trim();
+
+        const student = {
+          id: get("id"),
+          name: get("name"),
+          attendance: Number(get("attendance")),
+          assessment: Number(get("assessment")),
+          studyHours: Number(get("studyhours"))
+        };
+
+        if (!student.id || !student.name ||
+            !Number.isFinite(student.attendance) ||
+            !Number.isFinite(student.assessment) ||
+            !Number.isFinite(student.studyHours)) {
+          throw new Error("Invalid or missing data on CSV row " + (rowIndex + 2) + ".");
+        }
+
+        if (student.attendance < 0 || student.attendance > 100 ||
+            student.assessment < 0 || student.assessment > 100 ||
+            student.studyHours < 0) {
+          throw new Error("Values out of range on CSV row " + (rowIndex + 2) + ".");
+        }
+
+        student.riskScore = calculateRisk(
+          student.attendance, student.assessment, student.studyHours
+        );
+        student.level = riskLevel(student.riskScore);
+        return student;
+      });
+    }
+
+    function render() {
+      const high = students.filter(s => s.level === "HIGH").length;
+      const medium = students.filter(s => s.level === "MEDIUM").length;
+      const low = students.length - high - medium;
+
+      document.getElementById("totalCount").textContent = students.length;
+      document.getElementById("highCount").textContent = high;
+      document.getElementById("mediumCount").textContent = medium;
+      document.getElementById("lowCount").textContent = low;
+
+      const query = document.getElementById("searchBox").value.trim().toLowerCase();
+      const visible = students
+        .filter(s => (s.id + " " + s.name).toLowerCase().includes(query))
+        .sort((a, b) => b.riskScore - a.riskScore);
+
+      const rows = document.getElementById("studentRows");
+      rows.replaceChildren();
+
+      if (visible.length === 0) {
+        const tr = document.createElement("tr");
+        const td = document.createElement("td");
+        td.colSpan = 7;
+        td.textContent = students.length ? "No matching students." : "No student data loaded.";
+        tr.appendChild(td);
+        rows.appendChild(tr);
+      } else {
+        visible.forEach(student => {
+          const tr = document.createElement("tr");
+          const values = [
+            student.id,
+            student.name,
+            student.attendance.toFixed(1) + "%",
+            student.assessment.toFixed(1) + "%",
+            student.studyHours.toFixed(1),
+            student.riskScore.toFixed(1) + "%"
+          ];
+
+          values.forEach(value => {
+            const td = document.createElement("td");
+            td.textContent = value;
+            tr.appendChild(td);
+          });
+
+          const levelCell = document.createElement("td");
+          const badge = document.createElement("span");
+          badge.className = "badge " + student.level.toLowerCase();
+          badge.textContent = student.level;
+          levelCell.appendChild(badge);
+          tr.appendChild(levelCell);
+          rows.appendChild(tr);
+        });
+      }
+
+      const alert = document.getElementById("riskAlert");
+      if (students.length === 0) {
+        alert.textContent = "No student data loaded.";
+      } else if (high > 0) {
+        alert.textContent = "Advisor alert: " + high +
+          " high-risk student(s) may need immediate support.";
+      } else {
+        alert.textContent = "No students currently meet the high-risk threshold.";
+      }
+    }
+
+    document.getElementById("csvFile").addEventListener("change", async event => {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      try {
+        students = parseCsv(await file.text());
+        document.getElementById("message").textContent =
+          "Loaded " + students.length + " student record(s).";
+        document.getElementById("message").className = "message";
+        render();
+      } catch (error) {
+        document.getElementById("message").textContent = error.message;
+        document.getElementById("message").className = "message error";
+      }
+    });
+
+    document.getElementById("sampleButton").addEventListener("click", () => {
+      students = [
+        { id: "S001", name: "Asha Patel", attendance: 72, assessment: 65, studyHours: 4 },
+        { id: "S002", name: "Rahul Kumar", attendance: 95, assessment: 88, studyHours: 12 },
+        { id: "S003", name: "Meera Shah", attendance: 60, assessment: 55, studyHours: 3 }
+      ].map(student => ({
+        ...student,
+        riskScore: calculateRisk(student.attendance, student.assessment, student.studyHours)
+      })).map(student => ({
+        ...student,
+        level: riskLevel(student.riskScore)
+      }));
+
+      document.getElementById("message").textContent = "Sample data loaded.";
+      document.getElementById("message").className = "message";
+      render();
+    });
+
+    document.getElementById("searchBox").addEventListener("input", render);
+
+    document.getElementById("downloadButton").addEventListener("click", () => {
+      if (students.length === 0) {
+        document.getElementById("message").textContent =
+          "Load student data before downloading a report.";
+        document.getElementById("message").className = "message error";
+        return;
+      }
+
+      const header = [
+        "id", "name", "attendance", "assessment",
+        "studyHours", "riskScore", "riskLevel"
+      ];
+
+      const escapeCsv = value =>
+        '"' + String(value).replace(/"/g, '""') + '"';
+
+      const csv = [
+        header.join(","),
+        ...students.map(s => [
+          s.id, s.name, s.attendance, s.assessment,
+          s.studyHours, s.riskScore.toFixed(1), s.level
+        ].map(escapeCsv).join(","))
+      ].join("\r\n");
+
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "student-performance-report.csv";
+      link.click();
+      URL.revokeObjectURL(url);
+    });
+
+    render();
+  </script>
+</body>
+</html>
