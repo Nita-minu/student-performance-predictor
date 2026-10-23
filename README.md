@@ -33,4 +33,7 @@ Attendance and assessment must be between 0 and 100. Study hours must be zero or
 2. Make sure the HTML file is named `index.html`.
 3. Open `index.html` in a modern web browser.
 4. Choose a CSV file, or select **Load sample data** to try the dashboard.
-
+   
+Output images:
+<img width="1492" height="860" alt="Screenshot 2026-10-23 064647" src="https://github.com/user-attachments/assets/2e2f7d3c-27f5-4f07-8354-a6c2a6859345" />
+<img width="1278" height="890" alt="Screenshot 2026-10-23 064713" src="https://github.com/user-attachments/assets/85ef56a2-ce1a-40c3-9c9f-bc1785f3e25a" />
